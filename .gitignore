@@ -1,0 +1,7 @@
+data/*
+gpt4manual-output/*
+logs/*
+mistral-nov-finetune/*
+train_ins_mistral/*
+wandb/*
+.idea
