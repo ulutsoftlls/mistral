@@ -6,8 +6,8 @@ from peft import LoraConfig, get_peft_model
 import wandb, os
 
 #data
-train_dataset = load_dataset('json', data_files='./data/nov/train.jsonl', split='train')
-eval_dataset = load_dataset('json', data_files='./data/nov/validation.jsonl', split='train')
+train_dataset = load_dataset('json', data_files='./data/all_data/train.jsonl', split='train')
+eval_dataset = load_dataset('json', data_files='./data/all_data/validation.jsonl', split='train')
 
 
 def formatting_func(example):
@@ -76,8 +76,8 @@ def print_trainable_parameters(model):
 
 
 config = LoraConfig(
-    r=32,
-    lora_alpha=64,
+    r=64,
+    lora_alpha=128,
     target_modules=[
         "q_proj",
         "k_proj",
@@ -109,7 +109,7 @@ accelerator = Accelerator(fsdp_plugin=fsdp_plugin)
 model = accelerator.prepare_model(model)
 
 wandb.login()
-wandb_project = "nov-finetune"
+wandb_project = "train_old"
 if len(wandb_project) > 0:
     os.environ["WANDB_PROJECT"] = wandb_project
 
@@ -120,7 +120,7 @@ if torch.cuda.device_count() > 1: # If more than 1 GPU
 import transformers
 from datetime import datetime
 
-project = "nov-finetune"
+project = "train_old"
 base_model_name = "mistral"
 run_name = base_model_name + "-" + project
 output_dir = "./" + run_name
@@ -134,16 +134,16 @@ trainer = transformers.Trainer(
         warmup_steps=1,
         per_device_train_batch_size=2,
         gradient_accumulation_steps=1,
-        max_steps=15000,
+        max_steps=300000,
         learning_rate=1e-5, # Want a small lr for finetuning
         bf16=True,
         optim="paged_adamw_8bit",
-        logging_steps=1000,              # When to start reporting loss
+        logging_steps=5000,              # When to start reporting loss
         logging_dir="./logs",        # Directory for storing logs
         save_strategy="steps",       # Save the model checkpoint every logging step
-        save_steps=1000,                # Save checkpoints every 50 steps
+        save_steps=5000,                # Save checkpoints every 50 steps
         evaluation_strategy="steps", # Evaluate the model every logging step
-        eval_steps=1000,               # Evaluate and save checkpoints every 50 steps
+        eval_steps=5000,               # Evaluate and save checkpoints every 50 steps
         do_eval=True,                # Perform evaluation at the end of training
         report_to="wandb",           # Comment this out if you don't want to use weights & baises
         run_name=f"{run_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M')}"          # Name of the W&B run (optional)
