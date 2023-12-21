@@ -88,8 +88,8 @@ config = LoraConfig(
         "down_proj",
         "lm_head",
     ],
-    bias="none",
-    lora_dropout=0.05,  # Conventional
+    bias="lora_only",
+    lora_dropout=0.01,  # Conventional
     task_type="CAUSAL_LM",
 )
 
@@ -97,18 +97,7 @@ model = get_peft_model(model, config)
 print_trainable_parameters(model)
 
 
-from accelerate import FullyShardedDataParallelPlugin, Accelerator
-from torch.distributed.fsdp.fully_sharded_data_parallel import FullOptimStateDictConfig, FullStateDictConfig
-
-fsdp_plugin = FullyShardedDataParallelPlugin(
-    state_dict_config=FullStateDictConfig(offload_to_cpu=True, rank0_only=False),
-    optim_state_dict_config=FullOptimStateDictConfig(offload_to_cpu=True, rank0_only=False),
-)
-
-accelerator = Accelerator(fsdp_plugin=fsdp_plugin)
-
-model = accelerator.prepare_model(model)
-project = "train_old"
+project = "train_multi"
 base_model_name = "mistral"
 run_name = base_model_name + "-" + project
 output_dir = "./" + run_name
@@ -120,18 +109,18 @@ trainer = Trainer(
     args=TrainingArguments(
         output_dir=output_dir,
         warmup_steps=1,
-        per_device_train_batch_size=4,
+        per_device_train_batch_size=2,
         gradient_accumulation_steps=1,
-        max_steps=60000,
+        max_steps=120000,
         learning_rate=1e-5, # Want a small lr for finetuning
         fp16=True,
         optim="paged_adamw_32bit",
-        logging_steps=6000,              # When to start reporting loss
+        logging_steps=12000,              # When to start reporting loss
         logging_dir="./logs",        # Directory for storing logs
         save_strategy="steps",       # Save the model checkpoint every logging step
-        save_steps=6000,                # Save checkpoints every 50 steps
+        save_steps=12000,                # Save checkpoints every 50 steps
         evaluation_strategy="steps", # Evaluate the model every logging step
-        eval_steps=6000,               # Evaluate and save checkpoints every 50 steps
+        eval_steps=12000,               # Evaluate and save checkpoints every 50 steps
         do_eval=True,                # Perform evaluation at the end of training
         run_name=f"{run_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M')}"          # Name of the W&B run (optional)
     ),
@@ -142,7 +131,7 @@ model.config.use_cache = False  # silence the warnings. Please re-enable for inf
 
 for name, module in trainer.model.named_modules():
     if "norm" in name:
-        module = module.to(torch.float32)
+        module = module.to(torch.float16)
 
 trainer.train()
 

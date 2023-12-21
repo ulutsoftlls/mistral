@@ -3,7 +3,7 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from peft import prepare_model_for_kbit_training
 from peft import LoraConfig, get_peft_model
-import wandb, os
+import os
 
 #data
 train_dataset = load_dataset('json', data_files='./data/all_data/train.jsonl', split='train')
@@ -96,10 +96,6 @@ config = LoraConfig(
 model = get_peft_model(model, config)
 print_trainable_parameters(model)
 
-wandb.login()
-wandb_project = "train_with_new_tag"
-if len(wandb_project) > 0:
-    os.environ["WANDB_PROJECT"] = wandb_project
 
 if torch.cuda.device_count() > 1: # If more than 1 GPU
     model.is_parallelizable = True
@@ -122,18 +118,17 @@ trainer = transformers.Trainer(
         warmup_steps=1,
         per_device_train_batch_size=2,
         gradient_accumulation_steps=1,
-        max_steps=300000,
+        max_steps=240000,
         learning_rate=1e-5, # Want a small lr for finetuning
         bf16=True,
-        optim="paged_adamw_8bit",
-        logging_steps=50000,              # When to start reporting loss
+        optim="paged_adamw_32bit",
+        logging_steps=12000,              # When to start reporting loss
         logging_dir="./logs",        # Directory for storing logs
         save_strategy="steps",       # Save the model checkpoint every logging step
-        save_steps=50000,                # Save checkpoints every 50 steps
+        save_steps=12000,                # Save checkpoints every 50 steps
         evaluation_strategy="steps", # Evaluate the model every logging step
-        eval_steps=50000,               # Evaluate and save checkpoints every 50 steps
+        eval_steps=12000,               # Evaluate and save checkpoints every 50 steps
         do_eval=True,                # Perform evaluation at the end of training
-        report_to="wandb",           # Comment this out if you don't want to use weights & baises
         run_name=f"{run_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M')}"          # Name of the W&B run (optional)
     ),
     data_collator=transformers.DataCollatorForLanguageModeling(tokenizer, mlm=False),
