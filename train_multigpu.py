@@ -133,6 +133,6 @@ for name, module in trainer.model.named_modules():
     if "norm" in name:
         module = module.to(torch.float16)
 
-trainer.train()
+trainer.train(resume_from_checkpoint=True)
 
 
